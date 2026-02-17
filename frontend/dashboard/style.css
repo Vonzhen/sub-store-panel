@@ -1,0 +1,58 @@
+/* 普通工程注释：控制台视觉样式 (Dark Theme) */
+:root {
+    --bg-color: #1a1b26;
+    --card-bg: #24283b;
+    --text-main: #c0caf5;
+    --text-muted: #565f89;
+    --border-color: #414868;
+    --primary-color: #7aa2f7;
+    --primary-hover: #8caaee;
+    --danger-color: #f7768e;
+    --input-bg: #1f2335;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.5; }
+.hidden { display: none !important; }
+
+/* 视图容器与布局 */
+.view-container { min-height: 100vh; display: flex; flex-direction: column; }
+#login-view { justify-content: center; align-items: center; }
+
+/* 登录组件 */
+.login-card { background: var(--card-bg); padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); width: 100%; max-width: 400px; }
+.login-card h2 { margin-bottom: 1.5rem; text-align: center; }
+
+/* 表单与输入 */
+.input-group { margin-bottom: 1rem; }
+.input-group.row { display: flex; gap: 0.5rem; }
+input { width: 100%; padding: 0.75rem; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 4px; outline: none; }
+input:focus { border-color: var(--primary-color); }
+code { background: var(--bg-color); padding: 0.2rem 0.4rem; border-radius: 4px; color: var(--primary-color); }
+
+/* 交互按钮 */
+button { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+button:hover { opacity: 0.8; }
+.primary-btn { background: var(--primary-color); color: #1a1b26; width: 100%; }
+.secondary-btn { background: var(--border-color); color: var(--text-main); }
+.danger-btn { background: transparent; border: 1px solid var(--danger-color); color: var(--danger-color); }
+.text-btn { background: transparent; color: var(--text-muted); padding: 0; }
+.text-btn:hover { color: var(--text-main); }
+.action-group { display: flex; gap: 1rem; margin-top: 1rem; }
+
+/* 错误回显 */
+.error-text { color: var(--danger-color); font-size: 0.875rem; margin-top: 0.5rem; text-align: center; min-height: 1.2rem; }
+
+/* 仪表盘布局 */
+.top-nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: var(--card-bg); border-bottom: 1px solid var(--border-color); }
+.dashboard-grid { padding: 2rem; display: grid; gap: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+.card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden; }
+.card h3 { padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border-color); }
+.card-content { padding: 1.5rem; }
+.desc { color: var(--text-muted); margin-bottom: 1rem; }
+hr { border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0; }
+
+/* 数据表格 */
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
+th { color: var(--text-muted); font-weight: 500; }
