@@ -3,72 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sub-Store 管理控制台</title>
-    <link rel="stylesheet" href="style.css">
+    <title>管理控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: {
+                dark: '#0f172a', panel: '#1e293b', border: '#334155', primary: '#ec4899', primaryHover: '#db2777'
+            } } }
+        }
+    </script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+        .v-cloak { display: none; }
+    </style>
 </head>
-<body>
-    <div id="login-view" class="view-container">
-        <div class="login-card">
-            <h2>系统登录</h2>
-            <div class="input-group">
-                <input type="text" id="username" placeholder="用户名" autocomplete="username">
+<body class="antialiased min-h-screen">
+    <div id="app" v-cloak>
+        <div v-if="!isLoggedIn" class="flex items-center justify-center min-h-screen">
+            <div class="bg-panel border border-border p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6 text-center">系统登录</h2>
+                <div class="space-y-4">
+                    <div>
+                        <input v-model="loginForm.username" type="text" placeholder="用户名" class="w-full bg-dark border border-border rounded-lg px-4 py-3 focus:outline-none focus:border-primary transition-colors">
+                    </div>
+                    <div>
+                        <input v-model="loginForm.password" type="password" placeholder="密码" class="w-full bg-dark border border-border rounded-lg px-4 py-3 focus:outline-none focus:border-primary transition-colors">
+                    </div>
+                    <button @click="handleLogin" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-3 rounded-lg transition-all">登录控制台</button>
+                    <p v-if="loginError" class="text-red-400 text-sm text-center mt-2">{{ loginError }}</p>
+                </div>
             </div>
-            <div class="input-group">
-                <input type="password" id="password" placeholder="密码" autocomplete="current-password">
-            </div>
-            <button id="login-btn" class="primary-btn">登录控制台</button>
-            <div id="login-error" class="error-text"></div>
+        </div>
+
+        <div v-else class="max-w-6xl mx-auto p-6">
+            <header class="flex justify-between items-center bg-panel border border-border rounded-2xl p-4 mb-8 shadow-lg">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-xl shadow-md">⚙️</div>
+                    <h1 class="text-xl font-bold">管理控制台</h1>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <button @click="activeTab = 'my'" :class="{'text-primary font-bold': activeTab === 'my'}" class="hover:text-pink-400 transition-colors">我的订阅</button>
+                    <button v-if="currentUser.role === 'admin'" @click="activeTab = 'admin'" :class="{'text-primary font-bold': activeTab === 'admin'}" class="hover:text-pink-400 transition-colors">系统管理</button>
+                    <div class="border-l border-border h-6"></div>
+                    <span class="text-slate-400">你好, <span class="text-white">{{ currentUser.username }}</span></span>
+                    <button @click="handleLogout" class="text-red-400 hover:text-red-300 text-sm font-medium">退出登录</button>
+                </div>
+            </header>
+
+            <main v-if="activeTab === 'my'" class="space-y-6">
+                <div class="bg-panel border border-border rounded-2xl p-6 shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold flex items-center"><span class="mr-2">🔗</span> API 地址</h3>
+                        <div class="space-x-2">
+                            <button class="bg-dark hover:bg-slate-800 text-sm border border-border px-3 py-1.5 rounded-md transition-colors">快速刷新缓存</button>
+                        </div>
+                    </div>
+                    <div class="bg-dark border border-border rounded-xl p-4 flex justify-between items-center">
+                        <code class="text-teal-400 break-all select-all">{{ apiUrl }}</code>
+                        <button @click="copyApi" class="ml-4 bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm shrink-0 transition-colors">复制</button>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-3">此地址用于配置 Sub-Store 或相关代理客户端</p>
+                </div>
+
+                <div @click="openCoreFrontend" class="bg-gradient-to-r from-indigo-900 to-purple-900 border border-indigo-700 hover:border-indigo-500 rounded-2xl p-6 shadow-md cursor-pointer transition-all flex justify-between items-center group">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-2xl shadow-lg">🚀</div>
+                        <div>
+                            <h3 class="text-lg font-bold group-hover:text-indigo-300 transition-colors">打开 Sub-Store 前端</h3>
+                            <p class="text-indigo-300 text-sm mt-1">管理订阅、转换规则、编辑配置</p>
+                        </div>
+                    </div>
+                    <span class="text-2xl text-indigo-400 group-hover:translate-x-1 transition-transform">›</span>
+                </div>
+
+                <div class="bg-panel border border-border rounded-2xl p-6 shadow-md">
+                    <h3 class="text-lg font-bold mb-6 flex items-center"><span class="mr-2">⚙️</span> 高级设置</h3>
+                    
+                    <div class="mb-8">
+                        <h4 class="text-emerald-400 font-bold mb-2 flex items-center"><span class="w-2 h-2 rounded-full bg-emerald-400 mr-2"></span>定时同步</h4>
+                        <div class="flex justify-between items-center bg-dark p-4 rounded-xl border border-border">
+                            <div>
+                                <div class="font-bold text-white">启用定时刷新</div>
+                                <div class="text-slate-400 text-sm mt-1">中台将自动刷新订阅，保持节点信息最新</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="advancedConfig.cronEnabled" @change="saveSettings" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <h4 class="text-cyan-400 font-bold mb-2 flex items-center"><span class="w-2 h-2 rounded-full bg-cyan-400 mr-2"></span>Surge 环境</h4>
+                        <p class="text-slate-500 text-sm mb-3">模拟 Surge 环境，防止机场严查客户端版本号</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-slate-400 text-xs mb-1 ml-1">版本号</label>
+                                <input type="text" v-model="advancedConfig.surgeVer" @blur="saveSettings" class="w-full bg-dark border border-border rounded-lg px-4 py-2 focus:border-primary focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 text-xs mb-1 ml-1">Build 号</label>
+                                <input type="text" v-model="advancedConfig.surgeBuild" @blur="saveSettings" class="w-full bg-dark border border-border rounded-lg px-4 py-2 focus:border-primary focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-red-400 font-bold mb-2 flex items-center"><span class="w-2 h-2 rounded-full bg-red-400 mr-2"></span>访问路径</h4>
+                        <div class="bg-dark border border-red-900/50 rounded-xl p-5 relative overflow-hidden">
+                            <div class="flex justify-between items-center relative z-10">
+                                <div>
+                                    <div class="font-bold text-white">重新生成访问路径</div>
+                                    <div class="text-slate-400 text-sm mt-1">当前路径: <span class="text-teal-400">{{ currentUser.sub_store_path }}</span></div>
+                                </div>
+                                <button @click="handleResetPath" class="bg-transparent border border-red-500 text-red-400 hover:bg-red-500/10 px-4 py-2 rounded-lg transition-colors">重新生成</button>
+                            </div>
+                            <div class="mt-4 bg-red-900/20 border border-red-800/50 rounded-lg p-3 text-red-300 text-sm flex items-start">
+                                <span class="mr-2">⚠️</span>
+                                重新生成后，旧路径将立即失效，所有使用该路径的设备和分享链接都需要重新配置。此操作不可撤销。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <main v-if="activeTab === 'admin'" class="space-y-6">
+                <div class="bg-panel border border-border rounded-2xl p-6 shadow-md">
+                    <h3 class="text-lg font-bold mb-4 flex items-center"><span class="mr-2">👥</span> 系统用户列表</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-border text-slate-400 text-sm">
+                                    <th class="pb-3 pl-2">ID</th>
+                                    <th class="pb-3">用户名</th>
+                                    <th class="pb-3">角色</th>
+                                    <th class="pb-3">分配路径</th>
+                                    <th class="pb-3">创建时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="user in users" :key="user.id" class="border-b border-border/50 hover:bg-dark/50 transition-colors">
+                                    <td class="py-4 pl-2 text-slate-400">{{ user.id }}</td>
+                                    <td class="py-4 font-bold">{{ user.username }}</td>
+                                    <td class="py-4"><span class="bg-slate-700 px-2 py-1 rounded text-xs">{{ user.role }}</span></td>
+                                    <td class="py-4"><code class="text-teal-400 text-sm bg-dark px-2 py-1 rounded">{{ user.sub_store_path }}</code></td>
+                                    <td class="py-4 text-slate-400 text-sm">{{ new Date(user.created_at).toLocaleString() }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
-
-    <div id="dashboard-view" class="view-container hidden">
-        <header class="top-nav">
-            <h1>管理控制台</h1>
-            <div class="user-info">
-                <span id="current-username"></span>
-                <button id="logout-btn" class="text-btn">退出登录</button>
-            </div>
-        </header>
-
-        <main class="dashboard-grid">
-            <section class="card">
-                <h3>我的订阅与设置</h3>
-                <div class="card-content">
-                    <p class="desc">您的专属内部隔离路径：<code id="user-path">加载中...</code></p>
-                    <div class="action-group">
-                        <button id="open-core-btn" class="primary-btn">打开 Sub-Store 原版前端</button>
-                        <button id="reset-path-btn" class="danger-btn">重置专属路径</button>
-                    </div>
-                    <hr>
-                    <h4>修改密码</h4>
-                    <div class="input-group row">
-                        <input type="password" id="new-password" placeholder="输入新密码">
-                        <button id="change-pwd-btn" class="secondary-btn">确认修改</button>
-                    </div>
-                </div>
-            </section>
-
-            <section id="admin-panel" class="card hidden">
-                <h3>系统管理员面板 - 用户列表</h3>
-                <div class="card-content">
-                    <table id="users-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>用户名</th>
-                                <th>角色</th>
-                                <th>专属路径</th>
-                                <th>创建时间</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-tbody">
-                            </tbody>
-                    </table>
-                </div>
-            </section>
-        </main>
-    </div>
-
+    
     <script src="app.js"></script>
 </body>
 </html>
