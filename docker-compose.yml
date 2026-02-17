@@ -1,33 +1,36 @@
+# 普通工程注释：单体容器编排声明
 version: '3.8'
 
 services:
-  # 数据面：官方解析引擎（完全隔离，不暴露端口）
+  # 数据面：官方节点解析引擎基座
   sub-store-core:
     image: xream/sub-store:latest
     container_name: sub-store-core
     restart: always
-    environment:
-      # 设定高强度的内部通信密钥
-      - SUB_STORE_FRONTEND_BACKEND_PATH=/internal-core-secret-2026
     volumes:
+      # 持久化官方引擎的缓存与日志数据
       - ./data/core:/opt/app/data
+    networks:
+      - sub-store-net
 
-  # 控制面：独立鉴权网关与前端托管
-  panel-gateway:
+  # 控制面：独立鉴权网关与 UI 托管中台
+  sub-store-gateway:
     build: ./backend
-    container_name: sub-store-panel-gateway
+    container_name: sub-store-gateway
     restart: always
     ports:
-      # 将宿主机 18080 端口映射至网关的 8080 端口
+      # 将宿主机 18080 端口映射至网关 8080 端口
       - "18080:8080"
-    environment:
-      - PANEL_PASSWORD=your_secure_password # 请在此修改您的面板登录密码
-      - CORE_INTERNAL_PATH=/internal-core-secret-2026 # 必须与 core 环境变量保持一致
-      - JWT_SECRET=generate_a_random_string_here # JWT 签名密钥
+    volumes:
+      # 挂载前端静态页面
+      - ./frontend:/app/frontend
+      # 挂载 SQLite 数据库文件目录
+      - ./data/panel:/app/data
     depends_on:
       - sub-store-core
-    volumes:
-      # 挂载宿主机的前端静态文件至容器内
-      - ./frontend:/app/frontend
-      # 预留 SQLite 数据库挂载点（用于后续扩展）
-      - ./data/panel:/app/data
+    networks:
+      - sub-store-net
+
+networks:
+  sub-store-net:
+    bridge: true
