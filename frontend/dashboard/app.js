@@ -1,4 +1,4 @@
-// 普通工程注释：全量面板响应式交互引擎
+// 普通工程注释：全量面板响应式交互引擎 (已修复退出漂移与高级设置联调)
 const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
@@ -9,8 +9,8 @@ createApp({
         const loginError = ref('');
         const currentUser = ref({});
         const users = ref([]);
+        const advancedConfig = ref({});
         
-        // 模态框与状态
         const menuOpen = ref(false);
         const showModPwd = ref(false);
         const showModUser = ref(false);
@@ -28,6 +28,7 @@ createApp({
                 const data = await res.json();
                 if (data.success) {
                     currentUser.value = data.user;
+                    advancedConfig.value = data.user.advanced_config || {};
                     isLoggedIn.value = true;
                     if (data.user.role === 'admin') loadUsers();
                 }
@@ -40,13 +41,29 @@ createApp({
             const data = await res.json();
             if (data.success) {
                 currentUser.value = data.user;
+                advancedConfig.value = data.user.advanced_config || {};
                 isLoggedIn.value = true;
                 loginError.value = '';
                 if (data.user.role === 'admin') loadUsers();
             } else { loginError.value = data.message; }
         };
 
-        const handleLogout = async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.reload(); };
+        // 【关键修复】使用绝对路径跳转，根治刷新漂移 Bug
+        const handleLogout = async () => { 
+            await fetch('/api/auth/logout', { method: 'POST' }); 
+            window.location.href = '/dashboard/index.html'; 
+        };
+
+        const saveSettings = async () => {
+            try {
+                const res = await fetch('/api/users/me/advanced-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(advancedConfig.value)
+                });
+                if (!(await res.json()).success) alert('设置保存失败，请检查网络');
+            } catch (e) { console.error(e); }
+        };
 
         const loadUsers = async () => {
             const res = await fetch('/api/users');
@@ -58,8 +75,7 @@ createApp({
             if (!newUser.value.username || !newUser.value.password) return alert('请填写完整');
             const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newUser.value) });
             const data = await res.json();
-            alert(data.message);
-            if (data.success) { newUser.value = {username:'', password:''}; loadUsers(); }
+            if (data.success) { newUser.value = {username:'', password:''}; loadUsers(); } else alert('创建失败');
         };
 
         const deleteUser = async (id) => {
@@ -69,7 +85,7 @@ createApp({
         };
 
         const changePwd = async () => {
-            if (modForm.value.pwd.length < 6) return alert('密码太短');
+            if (modForm.value.pwd.length < 6) return alert('密码至少 6 位');
             const res = await fetch('/api/users/me/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newPassword: modForm.value.pwd }) });
             if ((await res.json()).success) { alert('密码修改成功，请重新登录'); handleLogout(); }
         };
@@ -95,9 +111,9 @@ createApp({
         onMounted(() => { checkAuth(); });
 
         return {
-            isLoggedIn, activeTab, loginForm, loginError, currentUser, users, apiUrl,
+            isLoggedIn, activeTab, loginForm, loginError, currentUser, users, advancedConfig, apiUrl,
             menuOpen, showModPwd, showModUser, modForm, newUser,
-            handleLogin, handleLogout, openCoreFrontend, handleResetPath, copyApi,
+            handleLogin, handleLogout, saveSettings, openCoreFrontend, handleResetPath, copyApi,
             createUser, deleteUser, changePwd, changeUsername
         };
     }
