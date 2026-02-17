@@ -1,36 +1,27 @@
-# 普通工程注释：单体容器编排声明
+# 普通工程注释：单体容器编排声明 (已修复网络驱动语法)
 version: '3.8'
-
 services:
-  # 数据面：官方节点解析引擎基座
   sub-store-core:
     image: xream/sub-store:latest
     container_name: sub-store-core
     restart: always
     volumes:
-      # 持久化官方引擎的缓存与日志数据
       - ./data/core:/opt/app/data
     networks:
       - sub-store-net
-
-  # 控制面：独立鉴权网关与 UI 托管中台
   sub-store-gateway:
     build: ./backend
     container_name: sub-store-gateway
     restart: always
     ports:
-      # 将宿主机 18080 端口映射至网关 8080 端口
       - "18080:8080"
     volumes:
-      # 挂载前端静态页面
       - ./frontend:/app/frontend
-      # 挂载 SQLite 数据库文件目录
       - ./data/panel:/app/data
     depends_on:
       - sub-store-core
     networks:
       - sub-store-net
-
 networks:
   sub-store-net:
-    bridge: true
+    driver: bridge
