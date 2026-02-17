@@ -1,11 +1,9 @@
 {
   "name": "sub-store-vps-gateway",
-  "version": "1.0.0",
-  "description": "Vanilla Dashboard Gateway for Sub-Store on VPS",
+  "version": "1.0.1",
+  "description": "Vanilla Dashboard Gateway with Security and Cron",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
     "express": "^4.18.2",
     "sqlite3": "^5.1.6",
