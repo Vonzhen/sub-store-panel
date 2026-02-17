@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Store 管理控制台</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="login-view" class="view-container">
+        <div class="login-card">
+            <h2>系统登录</h2>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="用户名" autocomplete="username">
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="密码" autocomplete="current-password">
+            </div>
+            <button id="login-btn" class="primary-btn">登录控制台</button>
+            <div id="login-error" class="error-text"></div>
+        </div>
+    </div>
+
+    <div id="dashboard-view" class="view-container hidden">
+        <header class="top-nav">
+            <h1>管理控制台</h1>
+            <div class="user-info">
+                <span id="current-username"></span>
+                <button id="logout-btn" class="text-btn">退出登录</button>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <section class="card">
+                <h3>我的订阅与设置</h3>
+                <div class="card-content">
+                    <p class="desc">您的专属内部隔离路径：<code id="user-path">加载中...</code></p>
+                    <div class="action-group">
+                        <button id="open-core-btn" class="primary-btn">打开 Sub-Store 原版前端</button>
+                        <button id="reset-path-btn" class="danger-btn">重置专属路径</button>
+                    </div>
+                    <hr>
+                    <h4>修改密码</h4>
+                    <div class="input-group row">
+                        <input type="password" id="new-password" placeholder="输入新密码">
+                        <button id="change-pwd-btn" class="secondary-btn">确认修改</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="admin-panel" class="card hidden">
+                <h3>系统管理员面板 - 用户列表</h3>
+                <div class="card-content">
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>用户名</th>
+                                <th>角色</th>
+                                <th>专属路径</th>
+                                <th>创建时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
