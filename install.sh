@@ -1,5 +1,5 @@
 #!/bin/bash
-# 普通工程注释：Sub-Store 面板一键引导安装脚本 (Bootstrap)
+# 普通工程注释：Sub-Store 面板一键引导安装脚本 (已修复 Pipe-Eating Bug)
 # 适用环境：Ubuntu / Debian / Alpine
 set -e
 
@@ -29,30 +29,43 @@ else
     exit 1
 fi
 
-# 3. 交互式配置参数
+# 3. 交互式配置参数 (修复点：强制指定输入源为 /dev/tty)
 # 默认配置
 DEFAULT_REPO="Vonzhen/sub-store-panel"
 DEFAULT_PORT="18080"
 TARGET_DIR="/opt/sub-store-panel"
 
 echo -e "${YELLOW}------------------------------------------------${NC}"
-read -p "请输入 GitHub 仓库地址 (用户名/项目名) [默认: ${DEFAULT_REPO}]: " REPO_INPUT
-REPO=${REPO_INPUT:-$DEFAULT_REPO}
 
-read -p "请输入面板公网访问端口 [默认: ${DEFAULT_PORT}]: " PORT_INPUT
+# 【关键修复】使用 < /dev/tty 强制从终端读取，防止吞噬管道中的脚本代码
+if [ -c /dev/tty ]; then
+    read -p "请输入 GitHub 仓库地址 (用户名/项目名) [默认: ${DEFAULT_REPO}]: " REPO_INPUT < /dev/tty
+    read -p "请输入面板公网访问端口 [默认: ${DEFAULT_PORT}]: " PORT_INPUT < /dev/tty
+else
+    echo -e "${YELLOW}[Warning] 未检测到交互终端，将使用默认配置自动安装...${NC}"
+fi
+
+REPO=${REPO_INPUT:-$DEFAULT_REPO}
 PORT=${PORT_INPUT:-$DEFAULT_PORT}
+
 echo -e "${YELLOW}------------------------------------------------${NC}"
 
 # 4. 工作区初始化与冲突处理
 if [ -d "$TARGET_DIR" ]; then
     echo -e "${YELLOW}[Warning] 检测到安装目录已存在: ${TARGET_DIR}${NC}"
-    read -p "是否强制清空并覆盖安装？(警告：这将删除现有数据库！) [y/N]: " CONFIRM
-    if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}[System] 正在清理旧文件...${NC}"
-        rm -rf "$TARGET_DIR"
+    # 【关键修复】确认操作也需要从终端读取
+    if [ -c /dev/tty ]; then
+        read -p "是否强制清空并覆盖安装？(警告：这将删除现有数据库！) [y/N]: " CONFIRM < /dev/tty
+        if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+            echo -e "${YELLOW}[System] 正在清理旧文件...${NC}"
+            rm -rf "$TARGET_DIR"
+        else
+            echo -e "${GREEN}[Info] 安装已取消${NC}"
+            exit 0
+        fi
     else
-        echo -e "${GREEN}[Info] 安装已取消${NC}"
-        exit 0
+        echo -e "${RED}[Error] 目录已存在且处于非交互模式，请手动清理后重试。${NC}"
+        exit 1
     fi
 fi
 
