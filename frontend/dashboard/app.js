@@ -1,4 +1,4 @@
-// 普通工程注释：全量面板响应式交互引擎 (已修复退出漂移与高级设置联调)
+// 普通工程注释：全量面板响应式交互引擎 (已集成全局同步策略控制)
 const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
@@ -9,7 +9,8 @@ createApp({
         const loginError = ref('');
         const currentUser = ref({});
         const users = ref([]);
-        const advancedConfig = ref({});
+        const advancedConfig = ref({}); // 用户级配置 (surgeVer, cronEnabled)
+        const syncInterval = ref(12);   // 【新增】全局级配置 (同步间隔)
         
         const menuOpen = ref(false);
         const showModPwd = ref(false);
@@ -22,6 +23,29 @@ createApp({
             return `${window.location.origin}${currentUser.value.sub_store_path}`;
         });
 
+        // 【新增】加载全局同步策略配置
+        const loadGlobalSyncSettings = async () => {
+            try {
+                const res = await fetch('/api/sync-settings');
+                const data = await res.json();
+                if (data.intervalHours) syncInterval.value = data.intervalHours;
+            } catch (e) { console.error('加载全局配置失败', e); }
+        };
+
+        // 【新增】保存全局同步策略配置
+        const saveGlobalSyncSettings = async () => {
+            try {
+                const res = await fetch('/api/sync-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ interval: syncInterval.value })
+                });
+                const data = await res.json();
+                if (data.success) alert('全局同步策略已更新，下次检查时生效');
+                else alert('保存失败: ' + data.message);
+            } catch (e) { alert('网络请求失败'); }
+        };
+
         const checkAuth = async () => {
             try {
                 const res = await fetch('/api/users/me');
@@ -30,6 +54,8 @@ createApp({
                     currentUser.value = data.user;
                     advancedConfig.value = data.user.advanced_config || {};
                     isLoggedIn.value = true;
+                    // 并行加载附加数据
+                    loadGlobalSyncSettings();
                     if (data.user.role === 'admin') loadUsers();
                 }
             } catch (e) { }
@@ -44,6 +70,8 @@ createApp({
                 advancedConfig.value = data.user.advanced_config || {};
                 isLoggedIn.value = true;
                 loginError.value = '';
+                // 并行加载附加数据
+                loadGlobalSyncSettings();
                 if (data.user.role === 'admin') loadUsers();
             } else { loginError.value = data.message; }
         };
@@ -112,8 +140,8 @@ createApp({
 
         return {
             isLoggedIn, activeTab, loginForm, loginError, currentUser, users, advancedConfig, apiUrl,
-            menuOpen, showModPwd, showModUser, modForm, newUser,
-            handleLogin, handleLogout, saveSettings, openCoreFrontend, handleResetPath, copyApi,
+            menuOpen, showModPwd, showModUser, modForm, newUser, syncInterval,
+            handleLogin, handleLogout, saveSettings, saveGlobalSyncSettings, openCoreFrontend, handleResetPath, copyApi,
             createUser, deleteUser, changePwd, changeUsername
         };
     }
