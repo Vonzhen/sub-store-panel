@@ -9,9 +9,13 @@ const path = require('path');
 const crypto = require('crypto');
 const cron = require('node-cron');
 
+// [修改] 现在的 utils 在 backend 目录下，所以是 ./utils
+const syncManager = require('./utils/sync_manager');
+
 const app = express();
 const PORT = 8080;
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+// 确保 data 目录在 backend 下
 const DB_PATH = path.join(__dirname, 'data/panel.db');
 
 app.use(cookieParser());
@@ -41,7 +45,7 @@ db.serialize(() => {
 });
 
 // ==========================================
-// 模块 2：IP 防爆破与安全鉴权层 (核心升级)
+// 模块 2：IP 防爆破与安全鉴权层
 // ==========================================
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
@@ -75,17 +79,33 @@ const requireAdmin = (req, res, next) => {
 const panelApi = express.Router();
 panelApi.use(express.json()); 
 
+// [新增] 同步策略配置接口
+panelApi.get('/sync-settings', requireAuth, (req, res) => {
+    try {
+        res.json(syncManager.getSettings());
+    } catch (e) {
+        res.status(500).json({ error: 'Config Read Error' });
+    }
+});
+
+panelApi.post('/sync-settings', requireAuth, (req, res) => {
+    const { interval } = req.body;
+    if (syncManager.updateSettings(interval)) {
+        res.json({ success: true, message: '设置已更新' });
+    } else {
+        res.status(400).json({ success: false, message: '无效的参数' });
+    }
+});
+
 panelApi.post('/auth/login', rateLimiter, (req, res) => {
     const { username, password } = req.body;
     db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
         if (err || !user || !bcrypt.compareSync(password, user.password_hash)) {
-            // 记录失败次数
             req.loginRecord.attempts += 1;
             if (req.loginRecord.attempts >= MAX_ATTEMPTS) req.loginRecord.lockedUntil = Date.now() + LOCKOUT_MS;
             loginAttempts.set(req.clientIp, req.loginRecord);
             return res.status(401).json({ success: false, message: `凭证无效 (剩余尝试次数: ${MAX_ATTEMPTS - req.loginRecord.attempts})` });
         }
-        // 登录成功，清除失败记录
         loginAttempts.delete(req.clientIp);
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role, sub_store_path: user.sub_store_path }, JWT_SECRET, { expiresIn: '7d' });
         res.cookie('auth_token', token, { httpOnly: true, path: '/' });
@@ -109,7 +129,6 @@ panelApi.put('/users/me/advanced-config', requireAuth, (req, res) => {
     db.run(`UPDATE users SET advanced_config = ? WHERE id = ?`, [configStr, req.user.id], (err) => res.json({ success: !err }));
 });
 
-// 其他用户操作 (省略重复部分，保持与上版一致)
 panelApi.post('/users/me/reset-path', requireAuth, (req, res) => {
     const newPath = '/' + crypto.randomBytes(16).toString('hex');
     db.run(`UPDATE users SET sub_store_path = ? WHERE id = ?`, [newPath, req.user.id], (err) => res.json({ success: !err, new_path: newPath }));
@@ -139,15 +158,24 @@ app.use('/api', panelApi);
 // ==========================================
 // 模块 4：定时同步守护进程 (Cron Engine)
 // ==========================================
-// 每小时执行一次，自动调用底层引擎刷新节点
 cron.schedule('0 * * * *', () => {
-    console.log('[Cron] 执行定时节点同步与保鲜...');
+    console.log('[Cron] 定时任务唤醒，检查全局同步门控状态...');
+    
+    // [使用] syncManager 进行判断
+    if (!syncManager.shouldRun()) {
+        console.log('[Cron] 未达到设定的同步间隔时间，本次跳过。');
+        return;
+    }
+
+    console.log('[Cron] 门控检查通过，开始遍历用户执行同步...');
+
     db.all(`SELECT sub_store_path, advanced_config FROM users`, [], (err, users) => {
+        if (err) return console.error('[Cron] DB Error:', err);
+
         users.forEach(async (u) => {
             try {
                 const config = JSON.parse(u.advanced_config);
                 if (config.cronEnabled) {
-                    // 通过内网代理调用底层 API 触发更新
                     await fetch(`http://localhost:${PORT}/core-api/api/sync`, {
                         headers: { 'Cookie': `auth_token=${jwt.sign({ sub_store_path: u.sub_store_path }, JWT_SECRET)}` }
                     });
@@ -155,17 +183,22 @@ cron.schedule('0 * * * *', () => {
             } catch (e) { /* 忽略个别解析错误 */ }
         });
     });
+
+    // [新增] 标记本次运行完成
+    syncManager.markRunComplete();
 });
 
 // ==========================================
-// 模块 5：底层引擎代理层 (严格正则)
+// 模块 5：底层引擎代理层
 // ==========================================
+// 注意：如果 frontend 文件夹是在 backend 的同级目录，这里应该用 '../frontend/dashboard'
+// 但根据你提供的 server.js 原文，你写的是 'frontend/dashboard' (暗示它在 backend 内部)
+// 我保持你原文的路径逻辑，如果报错 404，请确认 frontend 文件夹到底在哪里
 app.use('/dashboard', express.static(path.join(__dirname, 'frontend/dashboard')));
 
 app.use(async (req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/dashboard') || req.path === '/' || req.path === '/_next' || req.path.startsWith('/assets')) return next();
 
-    // 【安全升级】仅匹配严格的 32 位 Hex 保密路径
     const match = req.path.match(/^(\/[a-f0-9]{32})(\/.*)?$/);
     if (match) {
         const potentialPath = match[1];
