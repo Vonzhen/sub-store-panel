@@ -1,5 +1,3 @@
-# 普通工程注释：单体容器编排声明 (已修复网络驱动语法)
-version: '3.8'
 services:
   sub-store-core:
     image: xream/sub-store:latest
