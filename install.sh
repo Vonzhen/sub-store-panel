@@ -31,7 +31,7 @@ fi
 
 # 3. 交互式配置参数 (修复点：强制指定输入源为 /dev/tty)
 # 默认配置
-DEFAULT_REPO="Vonzhen/sub-store-panel"
+DEFAULT_REPO="miozen/sub-store-panel"
 DEFAULT_PORT="18080"
 TARGET_DIR="/opt/sub-store-panel"
 
