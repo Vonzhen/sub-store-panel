@@ -5,7 +5,7 @@
 **一键安装脚本 (Install):**
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Vonzhen/sub-store-panel/master/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/miozen/sub-store-panel/master/install.sh)"
 
 ```
 
